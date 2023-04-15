@@ -257,37 +257,83 @@ let player = new Player(
     100,
 );
 
-let level_1 = new Level(
-    [
+function gen_level(width, height) {
+    let platforms = [
         new Sprite(0, 7, 100, .2, "red", -.5, 0),
-        new Sprite(4, 6, 2, .1, "red", -.5, 0),
-    ],
-    [
-        new Enemy(
-            2,
-            6.7,
-            .52,
-            .3,
-            "black",
-            -.25,
-            0,
-            64,
-            6,
-            -6,
-            -5,
-            .2,
-            -.2,
-            false,
-            true,
-            100,
-            100,
-        ),
-    ],
-    0,
-    0,
-    10,
-    7,
-);
+    ];
+
+    for (let i = 0; i < width; i++) {
+        if (Math.random() < 1) {
+            platforms.push(
+                new Sprite(i, Math.ceil(Math.random() * height), 2, .1, "red", -.5, 0),
+            );
+        }
+    }
+
+    let enemies = [];
+
+    for (let i = 0; i < width; i++) {
+        if (Math.random() < 1) {
+            enemies.push(
+                new Enemy(
+                    i,
+                    Math.ceil(Math.random() * height) + .7,
+                    .52,
+                    .3,
+                    "black",
+                    -.25,
+                    0,
+                    64,
+                    6,
+                    -6,
+                    -5,
+                    .2,
+                    -.2,
+                    false,
+                    true,
+                    100,
+                    100,
+                ),
+            );
+        }
+    }
+
+    return new Level(platforms, enemies, 0, 0, width, height);
+}
+
+let level_1 = gen_level(100, 7);
+
+// let level_1 = new Level(
+//     [
+//         new Sprite(0, 7, 100, .2, "red", -.5, 0),
+//         new Sprite(4, 6, 2, .1, "red", -.5, 0),
+//     ],
+//     [
+//         new Enemy(
+//             2,
+//             6.7,
+//             .52,
+//             .3,
+//             "black",
+//             -.25,
+//             0,
+//             64,
+//             6,
+//             -6,
+//             -5,
+//             .2,
+//             -.2,
+//             false,
+//             true,
+//             100,
+//             100,
+//         ),
+//     ],
+//     0,
+//     0,
+//     10,
+//     7,
+// );
 
 function draw(player, level) {
     let html = "";
