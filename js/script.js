@@ -13,10 +13,10 @@ class Sprite {
     get_html() {
         return `<div style="
             position: absolute; 
-            left: ${this.x * pixels_per_meter}px; 
-            top: ${this.y * pixels_per_meter}px; 
-            width: ${this.width * pixels_per_meter}px; 
-            height: ${this.height * pixels_per_meter}px; 
+            left: ${this.x * CONSTANTS.graphics.pixels_per_meter}px;
+            top: ${this.y * CONSTANTS.graphics.pixels_per_meter}px;
+            width: ${this.width * CONSTANTS.graphics.pixels_per_meter}px;
+            height: ${this.height * CONSTANTS.graphics.pixels_per_meter}px; 
             background-color: ${this.color};
         "></div>`;
     }
@@ -31,12 +31,150 @@ class Sprite {
     check_vertical_collision(other) { // Returns true if this sprite is on top of the other sprite
         return this.check_total_collision(other) && (this.y + this.height <= other.y + other.height);
     }
+
+    move(time_delta) {
+        this.x += this.dx * time_delta / 1000;
+        this.y += this.dy * time_delta / 1000;
+    }
+}
+
+class LivingSprite extends Sprite {
+    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health) {
+        super(x, y, width, height, color, dx, dy);
+        this.mass = mass;
+        this.max_speed = max_speed;
+        this.min_speed = min_speed;
+        this.jump_force = jump_force;
+        this.move_force_forward = move_force_forward;
+        this.move_force_backward = move_force_backward;
+        this.jumped = jumped;
+        this.alive = alive;
+        this.health = health;
+    }
+
+    limit_speed() {
+        this.dx = Math.max(Math.min(this.dx, this.max_speed), this.min_speed);
+    }
+
+    move(time_delta) {
+        this.limit_speed();
+        this.x += this.dx * time_delta / 1000;
+        this.y += this.dy * time_delta / 1000;
+    }
+
+    harm(amount) {
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.alive = false;
+        }
+    }
+
+    heal(amount) {
+        this.health += amount;
+        if (this.health > 100) {
+            this.health = 100;
+        }
+    }
+
+    get_html() {
+        return `<div style="
+            position: absolute; 
+            left: ${this.x * CONSTANTS.graphics.pixels_per_meter}px;
+            top: ${this.y * CONSTANTS.graphics.pixels_per_meter}px;
+            width: ${this.width * CONSTANTS.graphics.pixels_per_meter}px;
+            height: ${this.height * CONSTANTS.graphics.pixels_per_meter}px; 
+            background-color: ${this.color};
+        "></div>`;
+    }
+}
+
+class Player extends LivingSprite {
+    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health) {
+        super(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health);
+    }
+
+    limit_location(level) {
+        this.x = Math.max(Math.min(this.x, level.x), level.x + level.width - this.width);
+        this.y = Math.min(this.y, level.y)
+    }
+
+    handle_collisions(level) {
+        let vertical_collision = false;
+        for (let platform of level.platforms) {
+            if (this.check_vertical_collision(platform) && this.dy > 0) {
+                this.y = platform.y - this.height;
+                this.dy = 0;
+
+                if (!keys["ArrowUp"]) {
+                    player.jumped = false;
+                }
+
+                vertical_collision = true;
+                break;
+            }
+        }
+
+        if (!vertical_collision) {
+            if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
+                this.dx = 0;
+            } else if (keys["ArrowLeft"] && keys["ArrowRight"]) {
+                this.dx = 0;
+            }
+        }
+
+        for (let enemy of level.enemies) {
+            if (this.check_total_collision(enemy)) {
+                this.harm(enemy.harm_amount);
+            }
+        }
+    }
+
+    move(time_delta, level) {
+        this.dy += CONSTANTS.physics.gravity * time_delta / 1000;
+
+        if (keys["ArrowLeft"]) {
+            this.dx += player.move_force_backward;
+        }
+
+        if (keys["ArrowRight"]) {
+            this.dx += player.move_force_forward;
+        }
+
+        if (keys["ArrowUp"] && !player.jumped) {
+            this.dy += player.jump_force;
+            player.jumped = true;
+        }
+
+        if (keys.ArrowRight) {
+            this.dx += this.move_force_forward
+        }
+
+        this.handle_collisions(level);
+        this.limit_speed();
+        this.x += this.dx * time_delta / 1000;
+        this.y += this.dy * time_delta / 1000;
+
+        this.limit_location(level);
+    }
+}
+
+class Enemy extends LivingSprite {
+    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health, harm_amount) {
+        super(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health);
+
+        this.harm_amount = harm_amount;
+    }
 }
 
 class Level {
-    constructor(platforms, enemies) {
+    constructor(platforms, enemies, x, y, width, height) {
         this.platforms = platforms;
         this.enemies = enemies;
+
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
     }
 
     get_html() {
@@ -53,10 +191,30 @@ class Level {
 
         return html;
     }
+
+    add_platform(platform) {
+        this.platforms.push(platform);
+    }
+
+    add_enemy(enemy) {
+        this.enemies.push(enemy);
+    }
 }
 
-// Basic platformer game
+const CONSTANTS = {
+    physics: {
+        gravity: 9.8,
+    },
+    graphics: {
+        pixels_per_meter: 100,
+    },
+}
 
+let game_properties = {
+    last_update_time: 0,
+}
+
+// Key Handling
 keys = {
     "ArrowUp": false,
     "ArrowDown": false,
@@ -78,28 +236,24 @@ window.addEventListener(
     }
 );
 
-let jumped = false;
-
-let last_update_time = 0;
-
-let game = document.getElementById("game");
-
-let gravity = 9.8;
-
-let pixels_per_meter = 100;
-
-let player = {
-    sprite: new Sprite(1, 1, .52, 1.7, "blue", 0, 0),
-    mass: 64,
-    dx: 0,
-    dy: 0,
-    max_speed: 6,
-    min_speed: -6,
-    jump_force: -5,
-    move_force_forward: .2,
-    move_force_backward: -.2,
-    alive: true,
-};
+let player = new Player(
+    1,
+    1,
+    .52,
+    .52,
+    "blue",
+    0,
+    0,
+    64,
+    6,
+    -6,
+    -5,
+    .2,
+    -.2,
+    false,
+    true,
+    100,
+);
 
 let level_1 = new Level(
     [
@@ -107,16 +261,32 @@ let level_1 = new Level(
         new Sprite(4, 6, 2, .1, "red", -.5, 0),
     ],
     [
-        new Sprite(2, 6.7, .52, .3, "black", -.5, 0),
+        new Enemy(
+            2,
+            6.7,
+            .52,
+            .3,
+            "black",
+            -.25,
+            0,
+            64,
+            6,
+            -6,
+            -5,
+            .2,
+            -.2,
+            false,
+            true,
+            100,
+            100,
+        ),
     ]
 );
 
 function draw(player, level) {
     let html = "";
-
     html += level.get_html();
-
-    html += player.sprite.get_html();
+    html += player.get_html();
 
     try {
         document.getElementById("game").innerHTML = html;
@@ -127,10 +297,10 @@ function level_loop(player, level) {
     let timestamp = Date.now();
     let delta_time = 0;
 
-    if (last_update_time === 0) {
-        last_update_time = timestamp;
+    if (game_properties.last_update_time === 0) {
+        game_properties.last_update_time = timestamp;
     } else {
-        delta_time = timestamp - last_update_time;
+        delta_time = timestamp - game_properties.last_update_time;
     }
 
     if (delta_time > 1000 / 80) {
@@ -138,7 +308,7 @@ function level_loop(player, level) {
         for (let i = 0; i < level.enemies.length; i++) {
             let enemy = level.enemies[i];
             if (
-                player.sprite.check_total_collision(enemy)
+                player.check_total_collision(enemy)
             ) {
                 player.alive = false;
                 break;
@@ -157,9 +327,9 @@ function level_loop(player, level) {
             dx += player.move_force_forward;
         }
 
-        if (keys["ArrowUp"] && !jumped) {
+        if (keys["ArrowUp"] && !player.jumped) {
             dy += player.jump_force;
-            jumped = true;
+            player.jumped = true;
         }
 
 
@@ -172,11 +342,11 @@ function level_loop(player, level) {
         for (let i = 0; i < level.platforms.length; i++) {
             let platform = level.platforms[i];
             if (
-                player.sprite.check_vertical_collision(platform) && dy >= 0
+                player.check_vertical_collision(platform) && dy >= 0
             ) {
                 vertical_collision = true;
                 if (!keys["ArrowUp"]) {
-                    jumped = false;
+                    player.jumped = false;
                 }
                 break;
             }
@@ -193,7 +363,7 @@ function level_loop(player, level) {
         if (vertical_collision && dy >= 0) {
             dy = 0;
         } else {
-            dy += gravity * delta_time / 1000;
+            dy += CONSTANTS.physics.gravity * delta_time / 1000;
         }
 
         dx = Math.min(dx, player.max_speed);
@@ -202,13 +372,13 @@ function level_loop(player, level) {
         dy = Math.max(dy, player.min_speed);
 
         // Calculate x y
-        let x = player.sprite.x + dx * delta_time / 1000;
-        let y = player.sprite.y + dy * delta_time / 1000;
+        let x = player.x + dx * delta_time / 1000;
+        let y = player.y + dy * delta_time / 1000;
 
-        y = Math.min(y, 7 - player.sprite.height)
+        y = Math.min(y, 7 - player.height)
 
-        player.sprite.x = x;
-        player.sprite.y = y;
+        player.x = x;
+        player.y = y;
         player.dx = dx;
         player.dy = dy;
 
@@ -225,7 +395,7 @@ function level_loop(player, level) {
             platform.y += platform.dy * delta_time / 1000;
         }
 
-        last_update_time = timestamp;
+        game_properties.last_update_time = timestamp;
         draw(player, level);
     }
 
