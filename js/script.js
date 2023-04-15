@@ -39,41 +39,15 @@ class Sprite {
 }
 
 class LivingSprite extends Sprite {
-    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health) {
-        super(x, y, width, height, color, dx, dy);
-        this.mass = mass;
-        this.max_speed = max_speed;
-        this.min_speed = min_speed;
+    constructor(x, y, width, height, color, dy, jump_force, jumped, alive) {
+        super(x, y, width, height, color, 0, dy);
         this.jump_force = jump_force;
-        this.move_force_forward = move_force_forward;
-        this.move_force_backward = move_force_backward;
         this.jumped = jumped;
         this.alive = alive;
-        this.health = health;
-    }
-
-    limit_speed() {
-        this.dx = Math.max(Math.min(this.dx, this.max_speed), this.min_speed);
     }
 
     move(time_delta) {
-        this.limit_speed();
-        this.x += this.dx * time_delta / 1000;
         this.y += this.dy * time_delta / 1000;
-    }
-
-    harm(amount) {
-        this.health -= amount;
-        if (this.health <= 0) {
-            this.alive = false;
-        }
-    }
-
-    heal(amount) {
-        this.health += amount;
-        if (this.health > 100) {
-            this.health = 100;
-        }
     }
 
     get_html() {
@@ -89,44 +63,38 @@ class LivingSprite extends Sprite {
 }
 
 class Player extends LivingSprite {
-    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health) {
-        super(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health);
+    constructor(x, y, width, height, color, dy, max_dy, jump_force, jumped, alive) {
+        super(x, y, width, height, color, dy, jump_force, jumped, alive);
+        this.max_dy = max_dy;
+        this.score = 0;
+    }
+
+    limit_speed() {
+        this.dy = Math.max(this.dy, this.max_dy);
     }
 
     limit_location(level) {
-        this.x = Math.min(Math.max(this.x, level.x), level.width - this.width);
-        this.y = Math.min(this.y, level.y + level.height - this.height);
-
-        console.log(this.x, this.y);
+        this.y = Math.max(this.y, level.y);
+        if (this.y === level.y) {
+            this.dy = 0;
+        }
     }
 
     handle_collisions(level) {
-        let vertical_collision = false;
-        for (let platform of level.platforms) {
-            if (this.check_vertical_collision(platform) && this.dy > 0) {
-                this.y = platform.y - this.height;
-                this.dy = 0;
+        if (this.check_vertical_collision(level.base_platform)) {
+            this.alive = false;
+        }
 
-                if (!keys["ArrowUp"]) {
-                    player.jumped = false;
+        for (let pipe of level.pipes) {
+            for (let pipe_sprite of pipe.pipes) {
+                if (this.check_total_collision(pipe_sprite)) {
+                    this.alive = false;
                 }
-
-                vertical_collision = true;
-                break;
             }
-        }
 
-        if (vertical_collision) {
-            if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
-                this.dx = 0;
-            } else if (keys["ArrowLeft"] && keys["ArrowRight"]) {
-                this.dx = 0;
-            }
-        }
-
-        for (let enemy of level.enemies) {
-            if (this.check_total_collision(enemy)) {
-                this.harm(enemy.harm_amount);
+            if (this.check_total_collision(pipe.scoring_block) && !pipe.scoring_block.scored && this.alive) {
+                this.score += 1;
+                pipe.scoring_block.scored = true;
             }
         }
     }
@@ -134,44 +102,65 @@ class Player extends LivingSprite {
     move(time_delta, level) {
         this.dy += CONSTANTS.physics.gravity * time_delta / 1000;
 
-        if (keys["ArrowLeft"]) {
-            this.dx += player.move_force_backward;
-        }
-
-        if (keys["ArrowRight"]) {
-            this.dx += player.move_force_forward;
-        }
-
         if (keys["ArrowUp"] && !player.jumped) {
             this.dy += player.jump_force;
             player.jumped = true;
+        } else if (!keys["ArrowUp"]) {
+            player.jumped = false;
         }
 
-        if (keys.ArrowRight) {
-            this.dx += this.move_force_forward
-        }
-
-        this.handle_collisions(level);
         this.limit_speed();
-        this.x += this.dx * time_delta / 1000;
+        this.handle_collisions(level);
         this.y += this.dy * time_delta / 1000;
 
         this.limit_location(level);
     }
 }
 
-class Enemy extends LivingSprite {
-    constructor(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health, harm_amount) {
-        super(x, y, width, height, color, dx, dy, mass, max_speed, min_speed, jump_force, move_force_forward, move_force_backward, jumped, alive, health);
+class ScoringBlock extends Sprite {
+    constructor(x, y, width, height) {
+        super(x, y, width, height, "red", -1, 0);
+        this.scored = false;
+    }
+}
 
-        this.harm_amount = harm_amount;
+class Pipe {
+    constructor(x, y, gap_y, gap_height) {
+        this.x = x;
+        this.y = y;
+
+        this.pipes = [
+            new Sprite(x, y, .2, gap_y, "green", -1, 0),
+            new Sprite(x, gap_y + gap_height, .2, 100 - gap_y - gap_height, "green", -1, 0)
+        ];
+
+        this.scoring_block = new ScoringBlock(x, gap_y, .2, gap_height);
+    }
+
+    get_html() {
+        let html = "";
+        for (let i = 0; i < this.pipes.length; i++) {
+            let pipe = this.pipes[i];
+            html += pipe.get_html();
+        }
+
+        return html;
+    }
+
+    move(time_delta) {
+        for (let i = 0; i < this.pipes.length; i++) {
+            let pipe = this.pipes[i];
+            pipe.move(time_delta);
+        }
+
+        this.scoring_block.move(time_delta);
     }
 }
 
 class Level {
-    constructor(platforms, enemies, x, y, width, height) {
-        this.platforms = platforms;
-        this.enemies = enemies;
+    constructor(pipes, x, y, width, height) {
+        this.base_platform = new Sprite(x, y + height, width, .1, "black", 0, 0);
+        this.pipes = pipes;
 
         this.x = x;
         this.y = y;
@@ -181,25 +170,14 @@ class Level {
 
     get_html() {
         let html = "";
-        for (let i = 0; i < this.platforms.length; i++) {
-            let platform = this.platforms[i];
-            html += platform.get_html();
-        }
 
-        for (let i = 0; i < this.enemies.length; i++) {
-            let enemy = this.enemies[i];
-            html += enemy.get_html();
+        html += this.base_platform.get_html();
+
+        for (let pipe of this.pipes) {
+            html += pipe.get_html();
         }
 
         return html;
-    }
-
-    add_platform(platform) {
-        this.platforms.push(platform);
-    }
-
-    add_enemy(enemy) {
-        this.enemies.push(enemy);
     }
 }
 
@@ -225,115 +203,57 @@ keys = {
 };
 
 window.addEventListener(
-    "keydown",
-    function (e) {
-        keys[e.key] = true;
-    }
-);
-
-window.addEventListener(
     "keyup",
     function (e) {
         keys[e.key] = false;
     }
 );
 
+window.addEventListener(
+    "keydown",
+    function (e) {
+        keys[e.key] = true;
+    }
+);
+
 let player = new Player(
-    1,
-    1,
-    .52,
-    .52,
+    0,
+    0,
+    .5,
+    .5,
     "blue",
     0,
-    0,
-    64,
-    6,
-    -6,
     -5,
-    .2,
-    -.2,
-    false,
+    -5,
+    5,
     true,
-    100,
 );
 
 function gen_level(width, height) {
-    let platforms = [
-        new Sprite(0, 7, 100, .2, "red", -.5, 0),
-    ];
+    let pipes = [];
 
-    for (let i = 0; i < width; i++) {
-        if (Math.random() < 1) {
-            platforms.push(
-                new Sprite(i, Math.ceil(Math.random() * height), 2, .1, "red", -.5, 0),
-            );
-        }
+    for (let i = 10; i < width; i+=3) {
+        let pipe = new Pipe(
+            i,
+            0,
+            Math.random() * height / 2,
+            2,
+        );
+
+        pipes.push(pipe);
     }
 
-    let enemies = [];
-
-    for (let i = 0; i < width; i++) {
-        if (Math.random() < 1) {
-            enemies.push(
-                new Enemy(
-                    i,
-                    Math.ceil(Math.random() * height) + .7,
-                    .52,
-                    .3,
-                    "black",
-                    -.25,
-                    0,
-                    64,
-                    6,
-                    -6,
-                    -5,
-                    .2,
-                    -.2,
-                    false,
-                    true,
-                    100,
-                    100,
-                ),
-            );
-        }
-    }
-
-    return new Level(platforms, enemies, 0, 0, width, height);
+    return new Level(
+        pipes,
+        0,
+        0,
+        width,
+        height,
+    );
 }
 
 let level_1 = gen_level(100, 7);
 
-// let level_1 = new Level(
-//     [
-//         new Sprite(0, 7, 100, .2, "red", -.5, 0),
-//         new Sprite(4, 6, 2, .1, "red", -.5, 0),
-//     ],
-//     [
-//         new Enemy(
-//             2,
-//             6.7,
-//             .52,
-//             .3,
-//             "black",
-//             -.25,
-//             0,
-//             64,
-//             6,
-//             -6,
-//             -5,
-//             .2,
-//             -.2,
-//             false,
-//             true,
-//             100,
-//             100,
-//         ),
-//     ],
-//     0,
-//     0,
-//     10,
-//     7,
-// );
 
 function draw(player, level) {
     let html = "";
@@ -342,6 +262,10 @@ function draw(player, level) {
 
     try {
         document.getElementById("game").innerHTML = html;
+    } catch (e) {}
+
+    try {
+            document.getElementById("score").innerHTML = "Score: " + player.score;
     } catch (e) {}
 }
 
@@ -358,13 +282,10 @@ function level_loop(player, level) {
     if (delta_time > 1000 / 80) {
         // Check enemy collision
         player.move(delta_time, level);
+        level.base_platform.move(delta_time);
 
-        for (let i = 0; i < level.enemies.length; i++) {
-            level.enemies[i].move(delta_time);
-        }
-
-        for (let i = 0; i < level.platforms.length; i++) {
-            level.platforms[i].move(delta_time);
+        for (let pipe of level.pipes) {
+            pipe.move(delta_time);
         }
 
         game_properties.last_update_time = timestamp;
@@ -375,7 +296,10 @@ function level_loop(player, level) {
         level_loop.bind(this, player, level)
         requestAnimationFrame(() => level_loop(player, level));
     } else {
-        console.log("Game over");
+        try {
+            document.getElementById("score").innerHTML =
+                "Score: " + player.score + "<br>Game Over" + "<br>Reload to play again";
+        } catch (e) {}
     }
 }
 
