@@ -94,8 +94,10 @@ class Player extends LivingSprite {
     }
 
     limit_location(level) {
-        this.x = Math.max(Math.min(this.x, level.x), level.x + level.width - this.width);
-        this.y = Math.min(this.y, level.y)
+        this.x = Math.min(Math.max(this.x, level.x), level.width - this.width);
+        this.y = Math.min(this.y, level.y + level.height - this.height);
+
+        console.log(this.x, this.y);
     }
 
     handle_collisions(level) {
@@ -114,7 +116,7 @@ class Player extends LivingSprite {
             }
         }
 
-        if (!vertical_collision) {
+        if (vertical_collision) {
             if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
                 this.dx = 0;
             } else if (keys["ArrowLeft"] && keys["ArrowRight"]) {
@@ -280,7 +282,11 @@ let level_1 = new Level(
             100,
             100,
         ),
-    ]
+    ],
+    0,
+    0,
+    10,
+    7,
 );
 
 function draw(player, level) {
@@ -305,94 +311,14 @@ function level_loop(player, level) {
 
     if (delta_time > 1000 / 80) {
         // Check enemy collision
-        for (let i = 0; i < level.enemies.length; i++) {
-            let enemy = level.enemies[i];
-            if (
-                player.check_total_collision(enemy)
-            ) {
-                player.alive = false;
-                break;
-            }
-        }
-
-        // Get key dx dy
-        let dx = 0;
-        let dy = 0;
-
-        if (keys["ArrowLeft"]) {
-            dx += player.move_force_backward;
-        }
-
-        if (keys["ArrowRight"]) {
-            dx += player.move_force_forward;
-        }
-
-        if (keys["ArrowUp"] && !player.jumped) {
-            dy += player.jump_force;
-            player.jumped = true;
-        }
-
-
-        // Calculate dx dy
-        dx += player.dx;
-        dy += player.dy;
-
-        // Check vertical collision
-        let vertical_collision = false;
-        for (let i = 0; i < level.platforms.length; i++) {
-            let platform = level.platforms[i];
-            if (
-                player.check_vertical_collision(platform) && dy >= 0
-            ) {
-                vertical_collision = true;
-                if (!keys["ArrowUp"]) {
-                    player.jumped = false;
-                }
-                break;
-            }
-        }
-
-        if (vertical_collision) {
-            if (!keys["ArrowLeft"] && !keys["ArrowRight"]) {
-                dx = 0;
-            } else if (keys["ArrowLeft"] && keys["ArrowRight"]) {
-                dx = 0;
-            }
-        }
-
-        if (vertical_collision && dy >= 0) {
-            dy = 0;
-        } else {
-            dy += CONSTANTS.physics.gravity * delta_time / 1000;
-        }
-
-        dx = Math.min(dx, player.max_speed);
-        dx = Math.max(dx, player.min_speed);
-        dy = Math.min(dy, player.max_speed);
-        dy = Math.max(dy, player.min_speed);
-
-        // Calculate x y
-        let x = player.x + dx * delta_time / 1000;
-        let y = player.y + dy * delta_time / 1000;
-
-        y = Math.min(y, 7 - player.height)
-
-        player.x = x;
-        player.y = y;
-        player.dx = dx;
-        player.dy = dy;
+        player.move(delta_time, level);
 
         for (let i = 0; i < level.enemies.length; i++) {
-            let enemy = level.enemies[i];
-            enemy.x += enemy.dx * delta_time / 1000;
-            enemy.y += enemy.dy * delta_time / 1000;
+            level.enemies[i].move(delta_time);
         }
 
         for (let i = 0; i < level.platforms.length; i++) {
-            let platform = level.platforms[i];
-            console.log(platform.dx * delta_time / 1000);
-            platform.x += platform.dx * delta_time / 1000;
-            platform.y += platform.dy * delta_time / 1000;
+            level.platforms[i].move(delta_time);
         }
 
         game_properties.last_update_time = timestamp;
