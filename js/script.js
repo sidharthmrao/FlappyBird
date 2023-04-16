@@ -102,13 +102,6 @@ class Player extends LivingSprite {
     move(time_delta, level) {
         this.dy += CONSTANTS.physics.gravity * time_delta / 1000;
 
-        if (keys["ArrowUp"] && !player.jumped) {
-            this.dy += player.jump_force;
-            player.jumped = true;
-        } else if (!keys["ArrowUp"]) {
-            player.jumped = false;
-        }
-
         this.limit_speed();
         this.handle_collisions(level);
         this.y += this.dy * time_delta / 1000;
@@ -119,7 +112,7 @@ class Player extends LivingSprite {
 
 class ScoringBlock extends Sprite {
     constructor(x, y, width, height) {
-        super(x, y, width, height, "red", -1, 0);
+        super(x, y, width, height, "red", -2, 0);
         this.scored = false;
     }
 }
@@ -130,8 +123,8 @@ class Pipe {
         this.y = y;
 
         this.pipes = [
-            new Sprite(x, y, .2, gap_y, "green", -1, 0),
-            new Sprite(x, gap_y + gap_height, .2, 100 - gap_y - gap_height, "green", -1, 0)
+            new Sprite(x, y, .2, gap_y, "green", -2, 0),
+            new Sprite(x, gap_y + gap_height, .2, 100 - gap_y - gap_height, "green", -2, 0)
         ];
 
         this.scoring_block = new ScoringBlock(x, gap_y, .2, gap_height);
@@ -154,6 +147,8 @@ class Pipe {
         }
 
         this.scoring_block.move(time_delta);
+
+        return (this.pipes[0].x < 0)
     }
 }
 
@@ -194,28 +189,6 @@ let game_properties = {
     last_update_time: 0,
 }
 
-// Key Handling
-let keys = {
-    "ArrowUp": false,
-    "ArrowDown": false,
-    "ArrowLeft": false,
-    "ArrowRight": false,
-};
-
-window.addEventListener(
-    "keyup",
-    function (e) {
-        keys[e.key] = false;
-    }
-);
-
-window.addEventListener(
-    "keydown",
-    function (e) {
-        keys[e.key] = true;
-    }
-);
-
 let player = new Player(
     0,
     0,
@@ -252,7 +225,7 @@ function gen_level(width, height) {
     );
 }
 
-let level_1 = gen_level(100, 7);
+let infinite_level = gen_level(100, 7);
 
 
 function draw(player, level) {
@@ -288,8 +261,23 @@ function level_loop(player, level) {
         player.move(delta_time, level);
         level.base_platform.move(delta_time);
 
+        let destroy = false;
+
         for (let pipe of level.pipes) {
-            pipe.move(delta_time);
+            if (pipe.move(delta_time)) {
+                destroy = true;
+            }
+        }
+
+        if (destroy) {
+            level.pipes.shift();
+            console.log(level.pipes.slice(-1)[0])
+            level.pipes.push(new Pipe(
+                level.pipes.slice(-1)[0].pipes[0].x + 3,
+                0,
+                Math.random() * level.height / 2,
+                2,
+            ));
         }
 
         game_properties.last_update_time = timestamp;
@@ -315,4 +303,22 @@ let high_score = localStorage.getItem("high_score");
 if (high_score === null) {
     high_score = 0;
 }
-level_loop(player, level_1);
+
+window.addEventListener(
+    "keydown",
+    function (e) {
+        if (!player.jumped) {
+            player.dy += player.jump_force;
+            player.jumped = true;
+        }
+    }
+);
+
+window.addEventListener(
+    "keyup",
+    function (e) {
+        player.jumped = false;
+    }
+);
+
+level_loop(player, infinite_level);
