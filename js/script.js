@@ -1,5 +1,3 @@
-import { getCookie, eraseCookie, setCookie} from "./cookie_controller.js";
-
 class Sprite {
     constructor(x, y, width, height, color, dx, dy) {
         this.x = x;
@@ -302,8 +300,8 @@ function level_loop(player, level) {
         level_loop.bind(this, player, level)
         requestAnimationFrame(() => level_loop(player, level));
     } else {
-        if (high_score < player.score) {
-            setCookie("high_score", player.score.toString(), 365);
+        if (!high_score || high_score <= player.score) {
+            localStorage.setItem("high_score", player.score.toString());
         }
         try {
             document.getElementById("score").innerHTML =
@@ -312,5 +310,9 @@ function level_loop(player, level) {
     }
 }
 
-let high_score = getCookie("high_score");
+
+let high_score = localStorage.getItem("high_score");
+if (high_score === null) {
+    high_score = 0;
+}
 level_loop(player, level_1);
