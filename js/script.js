@@ -321,4 +321,38 @@ window.addEventListener(
     }
 );
 
+window.addEventListener(
+    "mousedown",
+    function (e) {
+        if (!player.jumped) {
+            player.dy += player.jump_force;
+            player.jumped = true;
+        }
+    }
+);
+
+window.addEventListener(
+    "mouseup",
+    function (e) {
+        player.jumped = false;
+    }
+);
+
+window.addEventListener(
+    "touchstart",
+    function (e) {
+        if (!player.jumped) {
+            player.dy += player.jump_force;
+            player.jumped = true;
+        }
+    }
+);
+
+window.addEventListener(
+    "touchend",
+    function (e) {
+        player.jumped = false;
+    }
+);
+
 level_loop(player, infinite_level);
