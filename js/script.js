@@ -83,7 +83,7 @@ class Player extends LivingSprite {
     }
 
     handle_collisions(level) {
-        if (this.check_vertical_collision(level.base_platform)) {
+        if (this.check_total_collision(level.base_platform)) {
             this.alive = false;
         }
 
@@ -265,6 +265,10 @@ function draw(player, level) {
     try {
         document.getElementById("game").innerHTML = html;
     } catch (e) {}
+
+    if (player.score > high_score) {
+        high_score = player.score;
+    }
 
     try {
             document.getElementById("score").innerHTML = "Score: " + player.score + "<br>High Score: " + high_score;
