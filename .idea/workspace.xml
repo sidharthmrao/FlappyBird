@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="7c2b4b89-f228-4e15-a53e-3b801c16a85b" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/js/cookie_controller.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/js/script.js" beforeDir="false" afterPath="$PROJECT_DIR$/js/script.js" afterDir="false" />
@@ -19,6 +20,7 @@
       <list>
         <option value="HTML File" />
         <option value="CSS File" />
+        <option value="JavaScript File" />
       </list>
     </option>
   </component>
@@ -60,7 +62,7 @@
       <workItem from="1681480259672" duration="350000" />
       <workItem from="1681480822126" duration="5326000" />
       <workItem from="1681487828076" duration="346000" />
-      <workItem from="1681530107214" duration="19209000" />
+      <workItem from="1681530107214" duration="20316000" />
     </task>
     <servers />
   </component>

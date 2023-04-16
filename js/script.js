@@ -1,3 +1,5 @@
+import { getCookie, eraseCookie, setCookie} from "./cookie_controller.js";
+
 class Sprite {
     constructor(x, y, width, height, color, dx, dy) {
         this.x = x;
@@ -195,7 +197,7 @@ let game_properties = {
 }
 
 // Key Handling
-keys = {
+let keys = {
     "ArrowUp": false,
     "ArrowDown": false,
     "ArrowLeft": false,
@@ -265,7 +267,7 @@ function draw(player, level) {
     } catch (e) {}
 
     try {
-            document.getElementById("score").innerHTML = "Score: " + player.score;
+            document.getElementById("score").innerHTML = "Score: " + player.score + "<br>High Score: " + high_score;
     } catch (e) {}
 }
 
@@ -296,15 +298,15 @@ function level_loop(player, level) {
         level_loop.bind(this, player, level)
         requestAnimationFrame(() => level_loop(player, level));
     } else {
+        if (high_score < player.score) {
+            setCookie("high_score", player.score.toString(), 365);
+        }
         try {
             document.getElementById("score").innerHTML =
-                "Score: " + player.score + "<br>Game Over" + "<br>Reload to play again";
+                "Score: " + player.score + "<br>High Score: " + high_score + "<br>Game Over" + "<br>Reload to play again";
         } catch (e) {}
     }
 }
 
-function main() {
-    level_loop(player, level_1);
-}
-
-main();
+let high_score = getCookie("high_score");
+level_loop(player, level_1);
